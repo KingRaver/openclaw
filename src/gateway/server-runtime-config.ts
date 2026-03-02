@@ -115,11 +115,21 @@ export async function resolveGatewayRuntimeConfig(params: {
     process.env.OPENCLAW_SKIP_CANVAS_HOST !== "1" && params.cfg.canvasHost?.enabled !== false;
 
   const trustedProxies = params.cfg.gateway?.trustedProxies ?? [];
-  const controlUiAllowedOrigins = (params.cfg.gateway?.controlUi?.allowedOrigins ?? [])
-    .map((value) => value.trim())
+  // OPENCLAW_CONTROL_UI_ORIGINS: comma-separated allowed origins for the Control UI.
+  // Useful for PaaS deployments (Railway, Render, Fly.io) where origins are set via env vars.
+  const envControlUiOrigins = (process.env.OPENCLAW_CONTROL_UI_ORIGINS ?? "")
+    .split(",")
+    .map((v: string) => v.trim())
     .filter(Boolean);
+  const controlUiAllowedOrigins = [
+    ...(params.cfg.gateway?.controlUi?.allowedOrigins ?? []).map((v: string) => v.trim()).filter(Boolean),
+    ...envControlUiOrigins,
+  ];
+  // OPENCLAW_DANGEROUSLY_ALLOW_HOST_HEADER_ORIGIN=1: enable Host-header origin fallback.
+  // Equivalent to gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback=true in config.
   const dangerouslyAllowHostHeaderOriginFallback =
-    params.cfg.gateway?.controlUi?.dangerouslyAllowHostHeaderOriginFallback === true;
+    params.cfg.gateway?.controlUi?.dangerouslyAllowHostHeaderOriginFallback === true ||
+    process.env.OPENCLAW_DANGEROUSLY_ALLOW_HOST_HEADER_ORIGIN === "1";
 
   assertGatewayAuthConfigured(resolvedAuth);
   if (tailscaleMode === "funnel" && authMode !== "password") {
