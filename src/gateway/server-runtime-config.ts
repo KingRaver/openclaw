@@ -17,6 +17,10 @@ import {
   isValidIPv4,
   resolveGatewayBindHost,
 } from "./net.js";
+import {
+  resolveControlUiAllowedOrigins,
+  resolveControlUiHostHeaderOriginFallback,
+} from "./control-ui-origin-settings.js";
 import { mergeGatewayTailscaleConfig } from "./startup-auth.js";
 
 export type GatewayRuntimeConfig = {
@@ -117,19 +121,12 @@ export async function resolveGatewayRuntimeConfig(params: {
   const trustedProxies = params.cfg.gateway?.trustedProxies ?? [];
   // OPENCLAW_CONTROL_UI_ORIGINS: comma-separated allowed origins for the Control UI.
   // Useful for PaaS deployments (Railway, Render, Fly.io) where origins are set via env vars.
-  const envControlUiOrigins = (process.env.OPENCLAW_CONTROL_UI_ORIGINS ?? "")
-    .split(",")
-    .map((v: string) => v.trim())
-    .filter(Boolean);
-  const controlUiAllowedOrigins = [
-    ...(params.cfg.gateway?.controlUi?.allowedOrigins ?? []).map((v: string) => v.trim()).filter(Boolean),
-    ...envControlUiOrigins,
-  ];
+  const controlUiAllowedOrigins = resolveControlUiAllowedOrigins({ config: params.cfg });
   // OPENCLAW_DANGEROUSLY_ALLOW_HOST_HEADER_ORIGIN=1: enable Host-header origin fallback.
   // Equivalent to gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback=true in config.
-  const dangerouslyAllowHostHeaderOriginFallback =
-    params.cfg.gateway?.controlUi?.dangerouslyAllowHostHeaderOriginFallback === true ||
-    process.env.OPENCLAW_DANGEROUSLY_ALLOW_HOST_HEADER_ORIGIN === "1";
+  const dangerouslyAllowHostHeaderOriginFallback = resolveControlUiHostHeaderOriginFallback({
+    config: params.cfg,
+  });
 
   assertGatewayAuthConfigured(resolvedAuth);
   if (tailscaleMode === "funnel" && authMode !== "password") {

@@ -45,6 +45,10 @@ import {
 } from "../../net.js";
 import { resolveNodeCommandAllowlist } from "../../node-command-policy.js";
 import { checkBrowserOrigin } from "../../origin-check.js";
+import {
+  resolveControlUiAllowedOrigins,
+  resolveControlUiHostHeaderOriginFallback,
+} from "../../control-ui-origin-settings.js";
 import { GATEWAY_CLIENT_IDS, GATEWAY_CLIENT_MODES } from "../../protocol/client-info.js";
 import {
   ConnectErrorDetailCodes,
@@ -297,6 +301,10 @@ export function attachGatewayWsMessageHandler(params: {
   } = params;
 
   const configSnapshot = loadConfig();
+  const controlUiAllowedOrigins = resolveControlUiAllowedOrigins({ config: configSnapshot });
+  const allowHostHeaderOriginFallback = resolveControlUiHostHeaderOriginFallback({
+    config: configSnapshot,
+  });
   const trustedProxies = configSnapshot.gateway?.trustedProxies ?? [];
   const allowRealIpFallback = configSnapshot.gateway?.allowRealIpFallback === true;
   const clientIp = resolveClientIp({
@@ -494,9 +502,8 @@ export function attachGatewayWsMessageHandler(params: {
           const originCheck = checkBrowserOrigin({
             requestHost,
             origin: requestOrigin,
-            allowedOrigins: configSnapshot.gateway?.controlUi?.allowedOrigins,
-            allowHostHeaderOriginFallback:
-              configSnapshot.gateway?.controlUi?.dangerouslyAllowHostHeaderOriginFallback === true,
+            allowedOrigins: controlUiAllowedOrigins,
+            allowHostHeaderOriginFallback,
           });
           if (!originCheck.ok) {
             const errorMessage =

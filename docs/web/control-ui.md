@@ -238,6 +238,32 @@ Notes:
 - `gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback=true` enables
   Host-header origin fallback mode, but it is a dangerous security mode.
 
+## Hosted UI on a different origin (Vercel, Netlify, etc.)
+
+If you host the Control UI at one origin and the Gateway at another, use the
+Gateway domain for WebSocket connections and explicitly allow the UI origin.
+
+1. Set the Control UI `gatewayUrl` to your Gateway endpoint (for example
+   `wss://<gateway-domain>`), not the UI domain.
+2. On the Gateway host, allow your UI origin:
+
+```bash
+OPENCLAW_CONTROL_UI_ORIGINS="https://control-ui.example.com"
+```
+
+3. Choose auth mode:
+   - Keep shared-secret auth (`OPENCLAW_GATEWAY_TOKEN` or password) and paste
+     the credential in Control UI settings.
+   - Or use [trusted-proxy auth](/gateway/trusted-proxy-auth) when an
+     identity-aware reverse proxy is already enforcing login.
+
+`OPENCLAW_CONTROL_UI_ORIGINS` is a comma-separated list and supports multiple
+origins:
+
+```bash
+OPENCLAW_CONTROL_UI_ORIGINS="https://control-ui.example.com,https://control-ui-prod.example.com"
+```
+
 Example:
 
 ```json5

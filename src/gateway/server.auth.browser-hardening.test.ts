@@ -90,6 +90,61 @@ describe("gateway auth browser hardening", () => {
     });
   });
 
+  test("allows browser origins from OPENCLAW_CONTROL_UI_ORIGINS", async () => {
+    const prevOrigins = process.env.OPENCLAW_CONTROL_UI_ORIGINS;
+    process.env.OPENCLAW_CONTROL_UI_ORIGINS = "https://control-ui.example.com";
+    try {
+      testState.gatewayAuth = { mode: "token", token: "secret" };
+      await withGatewayServer(async ({ port }) => {
+        const ws = await openWs(port, { origin: "https://control-ui.example.com" });
+        try {
+          const res = await connectReq(ws, {
+            token: "secret",
+            client: TEST_OPERATOR_CLIENT,
+          });
+          expect(res.ok).toBe(true);
+        } finally {
+          ws.close();
+        }
+      });
+    } finally {
+      if (prevOrigins === undefined) {
+        delete process.env.OPENCLAW_CONTROL_UI_ORIGINS;
+      } else {
+        process.env.OPENCLAW_CONTROL_UI_ORIGINS = prevOrigins;
+      }
+    }
+  });
+
+  test("applies OPENCLAW_DANGEROUSLY_ALLOW_HOST_HEADER_ORIGIN during origin checks", async () => {
+    const prevFlag = process.env.OPENCLAW_DANGEROUSLY_ALLOW_HOST_HEADER_ORIGIN;
+    process.env.OPENCLAW_DANGEROUSLY_ALLOW_HOST_HEADER_ORIGIN = "1";
+    try {
+      testState.gatewayAuth = { mode: "token", token: "secret" };
+      await withGatewayServer(async ({ port }) => {
+        const ws = await openWs(port, {
+          host: "gateway.example",
+          origin: "https://gateway.example",
+        });
+        try {
+          const res = await connectReq(ws, {
+            token: "secret",
+            client: TEST_OPERATOR_CLIENT,
+          });
+          expect(res.ok).toBe(true);
+        } finally {
+          ws.close();
+        }
+      });
+    } finally {
+      if (prevFlag === undefined) {
+        delete process.env.OPENCLAW_DANGEROUSLY_ALLOW_HOST_HEADER_ORIGIN;
+      } else {
+        process.env.OPENCLAW_DANGEROUSLY_ALLOW_HOST_HEADER_ORIGIN = prevFlag;
+      }
+    }
+  });
+
   test("rate-limits browser-origin auth failures on loopback even when loopback exemption is enabled", async () => {
     testState.gatewayAuth = {
       mode: "token",
